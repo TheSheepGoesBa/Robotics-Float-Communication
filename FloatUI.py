@@ -82,6 +82,7 @@ class Buttons:
 
         master.winfo_toplevel().title("Float Controller")
         master.protocol("WM_DELETE_WINDOW", self.onClose)
+        master.geometry(str(self.config.get("windowwidth")) + "x" + str(self.config.get("windowheight")))
 
         topFrame = Frame(master)
         buttonFrame = Frame(master)
