@@ -158,7 +158,7 @@ class Buttons:
         self.serPorts.pack(side=LEFT, padx=5, pady=5)
 
 
-def serial_ports():
+def serial_ports(config: Config):
     """ Lists serial port names
 
         :raises EnvironmentError:
@@ -177,11 +177,15 @@ def serial_ports():
         raise EnvironmentError('Unsupported platform')
 
     result = []
+    # TODO test this
     for port in ports:
         try:
-            s = serial.Serial(port)
-            s.close()
-            result.append(port)
+            if port != config.get("serialport"):
+                s = serial.Serial(port)
+                s.close()
+                result.append(port)
+            else:
+                result.append(port)
         except (OSError, serial.SerialException):
             pass
     return result
