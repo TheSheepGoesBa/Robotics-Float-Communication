@@ -121,9 +121,8 @@ class Buttons:
         refreshPorts = Button(buttonFrame, text="Refresh Ports", command=self.refreshPorts, width=10)
         refreshPorts.pack(side=LEFT, padx=5, pady=5)
 
-        self.ports = serial_ports(self.config)
-        self.serPorts = OptionMenu(buttonFrame, self.config.serPort, self.config.serPort.get(), *self.ports)
-        self.serPorts.pack(side=LEFT, padx=5, pady=5)
+        self.serPorts = None
+        self.refreshPorts()
 
         self.input = Entry(inputFrame, width=80)
         self.input.pack(side=LEFT, padx=5, pady=5)
@@ -150,8 +149,11 @@ class Buttons:
         new_ports = serial_ports(self.config)
         if self.config.serPort.get() not in new_ports:
             self.config.serPort.set("")
+        else:
+            new_ports.remove(self.config.serPort.get())
         self.ports = new_ports
-        self.serPorts.destroy()
+        if self.serPorts is not None:
+            self.serPorts.destroy()
         self.serPorts = OptionMenu(self.buttonFrame, self.config.serPort, self.config.serPort.get(), *self.ports)
         self.serPorts.pack(side=LEFT, padx=5, pady=5)
 
@@ -186,6 +188,7 @@ def serial_ports(config: Config):
                 result.append(port)
         except (OSError, serial.SerialException):
             pass
+    result.sort()
     return result
 
 

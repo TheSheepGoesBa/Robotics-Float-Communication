@@ -22,8 +22,6 @@ class Config:
     serPort: StringVar
 
     def __init__(self):
-        self.serPort = StringVar()
-        self.serPort.set(self._settings["serialport"])
         pass
 
     def addListener(self, param, listener: SettingsListener):
@@ -64,6 +62,8 @@ class Config:
         except FileNotFoundError:
             self.writeConfig()
             print("Created config.json")
+        self.serPort = StringVar()
+        self.serPort.set(self._settings["serialport"])
 
     def getSerialPort(self) -> StringVar:
         return self.serPort
