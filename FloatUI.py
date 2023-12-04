@@ -129,11 +129,11 @@ class Buttons:
         self.input.bind("<Return>", lambda event: self.ser.send(self.input))
         self.input.focus_set()
 
-        self.inputSend = Button(inputFrame, text="Send", command=lambda: self.ser.send(self.input), width=10)
-        self.inputSend.pack(side=LEFT, padx=5, pady=5)
+        inputSend = Button(inputFrame, text="Send", command=lambda: self.ser.send(self.input), width=10)
+        inputSend.pack(side=LEFT, padx=5, pady=5)
 
-        self.btn = Button(topFrame, text="Test Console", command=self.consoleTest, width=10)
-        self.btn.pack(side=LEFT, padx=5, pady=5)
+        btn = Button(topFrame, text="Test Console", command=self.consoleTest, width=10)
+        btn.pack(side=LEFT, padx=5, pady=5)
 
     def consoleTest(self):
         for i in range(20):
