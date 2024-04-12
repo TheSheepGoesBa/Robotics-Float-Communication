@@ -14,7 +14,8 @@ class Config:
     _settings = {
         "windowwidth": 800,
         "windowheight": 600,
-        "serialport": ""
+        "serialport": "",
+        "startingTime": ""
     }
 
     _listeners = {}

@@ -1,11 +1,17 @@
 import glob
 import sys
 import tkinter as tk
+from datetime import datetime, timezone, timedelta
 from tkinter import *
 
 import serial
 
 from Config import Config, SettingsListener
+
+
+def addSecs(date: datetime, secs: float):
+    date = date + timedelta(seconds=secs)
+    return date
 
 
 class SerialManager(SettingsListener):
@@ -50,8 +56,33 @@ class SerialManager(SettingsListener):
         else:
             self.consoleInsert("Serial port not open", "red")
 
+    def sendText(self, text: str):
+        if self.isOpen:
+            self.ser.write(text.encode("utf-8"))
+            self.consoleInsert("Sent: " + text, "green")
+        else:
+            self.consoleInsert("Serial port not open", "red")
+
+    def sendStart(self, config: Config):
+        if self.isOpen:
+            time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+            text = "command.start" + time
+            config.set("startingTime", time)
+            self.ser.write(text.encode("utf-8"))
+            self.consoleInsert(text, "green")
+            # self.consoleInsert(addSecs(datetime.strptime(config.get("startingTime"), '%Y-%m-%d %H:%M:%S'), 5).strftime('%Y-%m-%d %H:%M:%S'), "green")
+        else:
+            self.consoleInsert("Serial port not open", "red")
+
+    def sendActuator(self, entry: Entry):
+        entry.insert(0, "command.actuator")
+        self.send(entry)
+
+
     def consoleInsert(self, data: str, color: str = "white"):
         self.console.config(state=NORMAL)
+        if len(data) > 6 and data[:5] == "sensor":
+            self.consoleInsert("Sensor: " + data[6:], "green")
         if color == "white":
             self.console.insert(tk.END, data + "\n")
         else:
@@ -132,8 +163,19 @@ class Buttons:
         inputSend = Button(inputFrame, text="Send", command=lambda: self.ser.send(self.input), width=10)
         inputSend.pack(side=LEFT, padx=5, pady=5)
 
-        btn = Button(topFrame, text="Test Console", command=self.consoleTest, width=10)
-        btn.pack(side=LEFT, padx=5, pady=5)
+        # btn = Button(topFrame, text="Test Console", command=self.consoleTest, width=10)
+        # btn.pack(side=LEFT, padx=5, pady=5)
+
+        startBtn = Button(topFrame, text="Start Float", command=lambda: self.ser.sendStart(self.config), width=10)
+        startBtn.pack(side=LEFT, padx=5, pady=5)
+
+        actuatorBtn = Button(topFrame, text="Move Actuator(%):", command=lambda: self.ser.sendActuator(self.actuatorInput), width=15)
+        actuatorBtn.pack(side=LEFT, padx=5, pady=5)
+        self.actuatorInput = Entry(topFrame, width=10)
+        self.actuatorInput.pack(side=LEFT, padx=5, pady=5)
+
+        startBtn = Button(topFrame, text="Send Ping", command=lambda: self.ser.sendText("ping"), width=10)
+        startBtn.pack(side=RIGHT, padx=5, pady=5)
 
     def consoleTest(self):
         for i in range(20):
@@ -177,7 +219,6 @@ def serial_ports(config: Config):
         raise EnvironmentError('Unsupported platform')
 
     result = []
-    # TODO test this
     for port in ports:
         try:
             if port != config.get("serialport"):
