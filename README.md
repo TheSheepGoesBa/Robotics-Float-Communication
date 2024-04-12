@@ -6,13 +6,18 @@
 * [Python](https://www.python.org/downloads/)
 
 ### Setup:
-Run the following command in the project's directiory to install the required packages:
+To get to the project's directory(the folder that you installed the code into), run the following in terminal/command prompt:
+```bash
+cd [path to the folder]
+```
+
+Then, run the following command to install the required packages:
 ```bash
 pip install -r requirements.txt
 ```
 
 ### Run:
-In the directory of the project, run the following command:\
+In the directory of the project, run the following command in terminal/command prompt:\
 ```python FloatUI.py```
 
 
