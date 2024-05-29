@@ -1,6 +1,7 @@
 {
-    "serialport": "",
-    "startingTime": "2024-04-12 23:30:55",
+    "recordTime": 481.199624501,
+    "serialport": "/dev/tty.usbserial-D30DQI7C",
+    "startingTime": "2024-05-04 19:35:17",
     "windowheight": 600,
     "windowwidth": 800
 }

@@ -2,16 +2,13 @@ import glob
 import sys
 import tkinter as tk
 from datetime import datetime, timezone, timedelta
+import time
 from tkinter import *
 
 import serial
 
+import Graph
 from Config import Config, SettingsListener
-
-
-def addSecs(date: datetime, secs: float):
-    date = date + timedelta(seconds=secs)
-    return date
 
 
 class SerialManager(SettingsListener):
@@ -19,12 +16,14 @@ class SerialManager(SettingsListener):
     isOpen: bool = False
     serLabel: Label
     console: Text
+    config: Config
 
     def __init__(self, config: Config, label: Label, console: Text):
         self.serLabel = label
         self.console = console
         self.connectSerial(config.get("serialport"))
         config.addListener("serialport", self)
+        self.config = config
 
     def valueChanged(self, param, oldValue, newValue) -> None:
         print("SerialListener: " + param + " changed from " + oldValue + " to " + newValue)
@@ -35,6 +34,7 @@ class SerialManager(SettingsListener):
         try:
             self.consoleInsert("Connecting to serial port: \'" + port + "\'", "yellow")
             self.ser = serial.Serial(port, 9600, timeout=1)
+            print(self.ser.isOpen())
             self.isOpen = True
             self.consoleInsert("Connection successful", "green")
             self.serLabel.config(text="Serial Open", foreground="green")
@@ -51,6 +51,8 @@ class SerialManager(SettingsListener):
         if self.isOpen:
             text = entry.get()
             self.ser.write(text.encode("utf-8"))
+            if text == "record":
+                self.config.set("recordTime", time.perf_counter())
             entry.delete(0, END)
             self.consoleInsert("Sent: " + text, "green")
         else:
@@ -78,11 +80,33 @@ class SerialManager(SettingsListener):
         entry.insert(0, "command.actuator")
         self.send(entry)
 
+    def sendDelay(self, entry: Entry):
+        entry.insert(0, "setdelay")
+        self.send(entry)
+
+    def sendRecord(self, entry: Entry):
+        entry.insert(0, "record")
+        self.config.set("recordTime", time.perf_counter())
+        self.send(entry)
+
+
+    def sendResend(self):
+        if self.isOpen:
+            self.ser.write("resend".encode("utf-8"))
+            self.consoleInsert("Sent: resend", "green")
+        else:
+            self.consoleInsert("Serial port not open", "red")
+
 
     def consoleInsert(self, data: str, color: str = "white"):
         self.console.config(state=NORMAL)
-        if len(data) > 6 and data[:5] == "sensor":
-            self.consoleInsert("Sensor: " + data[6:], "green")
+        if len(data) > 6 and data[:6] == "sensor":
+            sensorData = data[6:].split(",")
+            for (i, val) in enumerate(sensorData):
+                self.consoleInsert("RN07, " + str(round(time.perf_counter() - self.config.get("recordTime") - len(sensorData) * 5 + 5 * i)) + "s, " + str(round(float(val) * 0.1, 2)) + "kpa, " + str(round(((float(val) - 1002) * 0.01) + 0.87, 3)) + "m", "blue")
+            Graph.createPressureGraph(data[6:].split(","), self.config.get("startingTime"), round(time.perf_counter() - self.config.get("recordTime") - len(sensorData) * 5))
+        elif len(data) > 6 and data[:6] == "packet":
+            self.consoleInsert(data[6:], "blue")
         if color == "white":
             self.console.insert(tk.END, data + "\n")
         else:
@@ -137,12 +161,13 @@ class Buttons:
         self.console.tag_configure("red", foreground="red")
         self.console.tag_configure("green", foreground="green")
         self.console.tag_configure("yellow", foreground="yellow")
+        self.console.tag_configure("blue", foreground="blue")
 
         serLabel = Label(buttonFrame, text="Serial Closed", foreground="red")
         self.ser = SerialManager(self.config, serLabel, self.console)
         serReconnect = Button(buttonFrame, text="Reconnect", command=lambda: self.ser.connectSerial(self.config.get("serialport")), width=10)
 
-        self.console.after_idle(self.ser.updateConsole, 500)
+        self.console.after_idle(self.ser.updateConsole, 1000)
 
         serReconnect.pack(side=RIGHT, padx=5, pady=5)
         serLabel.pack(side=RIGHT, padx=5, pady=5)
@@ -163,25 +188,35 @@ class Buttons:
         inputSend = Button(inputFrame, text="Send", command=lambda: self.ser.send(self.input), width=10)
         inputSend.pack(side=LEFT, padx=5, pady=5)
 
-        # btn = Button(topFrame, text="Test Console", command=self.consoleTest, width=10)
-        # btn.pack(side=LEFT, padx=5, pady=5)
+        btn = Button(topFrame, text="Test Graph", command=self.consoleTest, width=10)
+        btn.pack(side=LEFT, padx=5, pady=5)
 
         startBtn = Button(topFrame, text="Start Float", command=lambda: self.ser.sendStart(self.config), width=10)
         startBtn.pack(side=LEFT, padx=5, pady=5)
 
         actuatorBtn = Button(topFrame, text="Move Actuator(%):", command=lambda: self.ser.sendActuator(self.actuatorInput), width=15)
         actuatorBtn.pack(side=LEFT, padx=5, pady=5)
-        self.actuatorInput = Entry(topFrame, width=10)
+        self.actuatorInput = Entry(topFrame, width=5)
         self.actuatorInput.pack(side=LEFT, padx=5, pady=5)
 
-        startBtn = Button(topFrame, text="Send Ping", command=lambda: self.ser.sendText("ping"), width=10)
-        startBtn.pack(side=RIGHT, padx=5, pady=5)
+        delayBtn = Button(topFrame, text="Set Delay(ms):", command=lambda: self.ser.sendDelay(self.delayInput), width=10)
+        delayBtn.pack(side=LEFT, padx=5, pady=5)
+        self.delayInput = Entry(topFrame, width=5)
+        self.delayInput.pack(side=LEFT, padx=5, pady=5)
+
+        resendBtn = Button(topFrame, text="Resend Data", command=lambda: self.ser.sendResend()  , width=10)
+        resendBtn.pack(side=LEFT, padx=5, pady=5)
+
+        pingBtn = Button(topFrame, text="Send Ping", command=lambda: self.ser.sendText("ping"), width=10)
+        pingBtn.pack(side=RIGHT, padx=5, pady=5)
 
     def consoleTest(self):
-        for i in range(20):
-            self.master.update()
-            self.master.after(100, self.ser.consoleInsert("Test " + str(i)))
-            self.console.see(END)
+        self.config.set("startingTime", datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'))
+        self.ser.consoleInsert("sensor100,200,300,400,500,600,700,800,900,1000")
+        # for i in range(20):
+        #     self.master.update()
+        #     self.master.after(100, self.ser.consoleInsert("Test " + str(i)))
+        #     self.console.see(END)
 
     def onClose(self):
         self.master.destroy()

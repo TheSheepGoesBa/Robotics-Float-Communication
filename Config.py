@@ -15,7 +15,8 @@ class Config:
         "windowwidth": 800,
         "windowheight": 600,
         "serialport": "",
-        "startingTime": ""
+        "startingTime": "",
+        "recordTime": 0.0
     }
 
     _listeners = {}
